@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>MirrorCore - 智能助手</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Google+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" />
+    <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+    <div class="app-container">
+        <!-- 侧边栏 - 近期对话 -->
+        <div id="sidebar" class="sidebar">
+            <div class="sidebar-header">
+                <button id="new-chat-btn" class="new-chat-btn">
+                    <span class="material-symbols-outlined">add</span>
+                    新对话
+                </button>
+            </div>
+            <div class="conversations-list" id="conversations-list">
+                <!-- 对话列表将在这里动态添加 -->
+            </div>
+        </div>
+
+        <!-- 聊天界面 -->
+        <div id="chat-container" class="chat-container">
+            <!-- 顶部导航栏 -->
+            <div class="chat-header">
+                <div class="header-left">
+                    <button id="sidebar-toggle" class="icon-button" title="切换侧边栏">
+                        <span class="material-symbols-outlined">menu</span>
+                    </button>
+                    <div class="app-title">
+                        <span class="app-emoji">🤖</span>
+                        <span>MirrorCore</span>
+                    </div>
+                </div>
+                <div class="header-right">
+                    <button id="settings-btn" class="icon-button" title="设置">
+                        <span class="material-symbols-outlined">settings</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- 主聊天区域 -->
+            <div class="chat-main">
+                <!-- 欢迎界面 -->
+                <div class="welcome-section" id="welcome-section">
+                    <div class="welcome-content">
+                        <div class="welcome-header">
+                            <h1>你好！欢迎使用 MirrorCore</h1>
+                            <p class="welcome-subtitle">我是你的智能助手，可以帮你处理各种任务</p>
+                        </div>
+                        
+                        <div class="suggestion-chips">
+                            <button class="suggestion-chip">
+                                <span class="material-symbols-outlined">mail</span>
+                                发送邮件
+                            </button>
+                            <button class="suggestion-chip">
+                                <span class="material-symbols-outlined">event</span>
+                                管理日程
+                            </button>
+                            <button class="suggestion-chip">
+                                <span class="material-symbols-outlined">search</span>
+                                搜索信息
+                            </button>
+                            <button class="suggestion-chip">
+                                <span class="material-symbols-outlined">help</span>
+                                使用帮助
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 消息区域 -->
+                <div class="messages-container" id="messages-container" style="display: none;">
+                    <!-- 消息将在这里动态添加 -->
+                </div>
+            </div>
+
+            <!-- 输入区域 -->
+            <div class="input-section">
+                <div class="input-container">
+                    <div class="input-wrapper">
+                        <button id="attach-btn" class="input-action-btn" title="添加图片">
+                            <span class="material-symbols-outlined">attach_file</span>
+                        </button>
+                        <input type="file" id="image-input" accept="image/*" style="display: none;">
+                        <div class="text-input-container">
+                            <textarea id="message-input" placeholder="输入消息..." rows="1" maxlength="2000"></textarea>
+                            <div class="input-actions">
+                                <button id="send-btn" class="send-button" title="发送" disabled>
+                                    <span class="material-symbols-outlined">send</span>
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="image-preview" class="image-preview" style="display: none;"></div>
+                </div>
+                <div class="input-footer">
+                    <p class="disclaimer">MirrorCore 可能会出现错误。请核实重要信息。</p>
+                </div>
+            </div>
+        </div>
+
+        <!-- 设置模态框 -->
+        <div id="settings-modal" class="modal" style="display: none;">
+            <div class="modal-content settings-modal">
+                <div class="modal-header">
+                    <h2><i class="fas fa-cog"></i> 设置</h2>
+                    <button class="close-btn" id="close-settings">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                
+                <div class="settings-tabs">
+                    <button class="tab-btn active" data-tab="chat-settings">Chat</button>
+                    <button class="tab-btn" data-tab="builder-settings">Builder</button>
+                    <button class="tab-btn" data-tab="general-settings">通用</button>
+                </div>
+
+                <div class="settings-content">
+                    <!-- Chat设置 -->
+                    <div class="tab-content active" id="chat-settings">
+                        <div class="settings-section">
+                            <h3><i class="fas fa-robot"></i> 智能体设置</h3>
+                            <div class="setting-item">
+                                <label for="agent-name-setting">智能体名称</label>
+                                <input type="text" id="agent-name-setting" placeholder="例如: 小明" value="智能助手">
+                                <p class="setting-description">设置你的AI助手的名称，这将影响对话中的称呼</p>
+                            </div>
+                            <div class="setting-item">
+                                <label class="toggle-label">
+                                    <input type="checkbox" id="enable-agent" checked>
+                                    <span class="toggle-slider"></span>
+                                    启用智能体
+                                </label>
+                                <p class="setting-description">开启后，AI将具有更强的推理和对话能力</p>
+                            </div>
+                        </div>
+
+                        <div class="settings-section">
+                            <h3><i class="fas fa-plug"></i> MCP协议</h3>
+                            <div class="setting-item">
+                                <label class="toggle-label">
+                                    <input type="checkbox" id="enable-mcp" checked>
+                                    <span class="toggle-slider"></span>
+                                    启用MCP协议
+                                </label>
+                                <p class="setting-description">Model Context Protocol，用于扩展AI的能力和工具集成</p>
+                            </div>
+                            <div class="setting-item">
+                                <label for="mcp-server-url">MCP服务器地址</label>
+                                <input type="url" id="mcp-server-url" placeholder="http://localhost:3001" value="http://localhost:3001">
+                                <p class="setting-description">MCP协议服务器的连接地址</p>
+                            </div>
+                        </div>
+
+                        <div class="settings-section">
+                            <h3><i class="fas fa-comments"></i> 对话设置</h3>
+                            <div class="setting-item">
+                                <label for="max-tokens">最大回复长度</label>
+                                <input type="range" id="max-tokens" min="100" max="4000" value="2000" step="100">
+                                <span class="range-value">2000 tokens</span>
+                                <p class="setting-description">控制AI回复的最大长度</p>
+                            </div>
+                            <div class="setting-item">
+                                <label for="temperature">创造性</label>
+                                <input type="range" id="temperature" min="0" max="1" value="0.7" step="0.1">
+                                <span class="range-value">0.7</span>
+                                <p class="setting-description">数值越高，回复越有创意；数值越低，回复越准确</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Builder设置 -->
+                    <div class="tab-content" id="builder-settings">
+                        <div class="settings-section">
+                            <h3><i class="fas fa-tools"></i> 构建器设置</h3>
+                            <div class="setting-item">
+                                <label class="toggle-label">
+                                    <input type="checkbox" id="enable-builder" checked>
+                                    <span class="toggle-slider"></span>
+                                    启用Builder模式
+                                </label>
+                                <p class="setting-description">开启后可以创建和编辑自定义工作流</p>
+                            </div>
+                            <div class="setting-item">
+                                <label class="toggle-label">
+                                    <input type="checkbox" id="enable-code-execution">
+                                    <span class="toggle-slider"></span>
+                                    启用代码执行
+                                </label>
+                                <p class="setting-description">允许AI执行代码和脚本（需要谨慎使用）</p>
+                            </div>
+                        </div>
+
+                        <div class="settings-section">
+                            <h3><i class="fas fa-database"></i> 数据管理</h3>
+                            <div class="setting-item">
+                                <label for="data-retention">数据保留期限</label>
+                                <select id="data-retention">
+                                    <option value="7">7天</option>
+                                    <option value="30" selected>30天</option>
+                                    <option value="90">90天</option>
+                                    <option value="365">1年</option>
+                                    <option value="-1">永久保留</option>
+                                </select>
+                                <p class="setting-description">聊天记录和用户数据的保留时间</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- 通用设置 -->
+                    <div class="tab-content" id="general-settings">
+                        <div class="settings-section">
+                            <h3><i class="fas fa-palette"></i> 界面设置</h3>
+                            <div class="setting-item">
+                                <label for="theme-select">主题</label>
+                                <select id="theme-select">
+                                    <option value="auto" selected>跟随系统</option>
+                                    <option value="light">浅色模式</option>
+                                    <option value="dark">深色模式</option>
+                                </select>
+                                <p class="setting-description">选择应用的外观主题</p>
+                            </div>
+                            <div class="setting-item">
+                                <label for="language-select">语言</label>
+                                <select id="language-select">
+                                    <option value="zh-CN" selected>简体中文</option>
+                                    <option value="en-US">English</option>
+                                    <option value="ja-JP">日本語</option>
+                                </select>
+                                <p class="setting-description">选择界面显示语言</p>
+                            </div>
+                        </div>
+
+                        <div class="settings-section">
+                            <h3><i class="fas fa-bell"></i> 通知设置</h3>
+                            <div class="setting-item">
+                                <label class="toggle-label">
+                                    <input type="checkbox" id="enable-notifications" checked>
+                                    <span class="toggle-slider"></span>
+                                    启用通知
+                                </label>
+                                <p class="setting-description">接收系统和扩展的通知消息</p>
+                            </div>
+                            <div class="setting-item">
+                                <label class="toggle-label">
+                                    <input type="checkbox" id="enable-sound">
+                                    <span class="toggle-slider"></span>
+                                    通知声音
+                                </label>
+                                <p class="setting-description">播放通知提示音</p>
+                            </div>
+                        </div>
+
+                        <div class="settings-section">
+                            <h3><i class="fas fa-shield-alt"></i> 隐私与安全</h3>
+                            <div class="setting-item">
+                                <label class="toggle-label">
+                                    <input type="checkbox" id="enable-analytics">
+                                    <span class="toggle-slider"></span>
+                                    使用统计
+                                </label>
+                                <p class="setting-description">帮助改进产品体验（匿名数据）</p>
+                            </div>
+                            <div class="setting-item">
+                                <button class="danger-btn" id="clear-data-btn">
+                                    <i class="fas fa-trash"></i>
+                                    清除所有数据
+                                </button>
+                                <p class="setting-description">删除所有聊天记录和用户数据</p>
+                            </div>
+                        </div>
+
+                        <div class="settings-actions">
+                            <button class="primary-btn" id="save-settings-btn">
+                                <i class="fas fa-save"></i>
+                                保存设置
+                            </button>
+                            <button class="secondary-btn" id="reset-settings-btn">
+                                <i class="fas fa-undo"></i>
+                                重置为默认
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- 内存管理模态框 -->
+        <div id="memory-modal" class="modal" style="display: none;">
+            <div class="modal-content memory-modal">
+                <div class="modal-header">
+                    <h2><i class="fas fa-brain"></i> 记忆管理</h2>
+                    <button class="close-btn" id="close-memory">
+                        <i class="fas fa-times"></i>
+                    </button>
+                </div>
+                
+                <div class="memory-content">
+                    <div class="memory-section">
+                        <h3><i class="fas fa-user"></i> 个人偏好</h3>
+                        <div id="memory-preferences" class="memory-grid">
+                            <!-- 动态加载的偏好数据 -->
+                        </div>
+                    </div>
+                    
+                    <div class="memory-section">
+                        <h3><i class="fas fa-chart-bar"></i> 使用统计</h3>
+                        <div id="memory-stats" class="stats-grid">
+                            <!-- 动态加载的统计数据 -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- 右键菜单 -->
+    <div id="context-menu" class="context-menu" style="display: none;">
+        <div class="context-menu-item" id="pin-conversation">
+            <span class="material-symbols-outlined">push_pin</span>
+            <span class="menu-text">固定</span>
+        </div>
+        <div class="context-menu-item" id="rename-conversation">
+            <span class="material-symbols-outlined">edit</span>
+            <span class="menu-text">重命名</span>
+        </div>
+        <div class="context-menu-item" id="delete-conversation">
+            <span class="material-symbols-outlined">delete</span>
+            <span class="menu-text">删除</span>
+        </div>
+    </div>
+
+    <!-- 重命名对话框 -->
+    <div id="rename-dialog" class="dialog-overlay" style="display: none;">
+        <div class="dialog">
+            <div class="dialog-header">
+                <h3>重命名对话</h3>
+                <button class="dialog-close" id="rename-dialog-close">
+                    <span class="material-symbols-outlined">close</span>
+                </button>
+            </div>
+            <div class="dialog-content">
+                <input type="text" id="rename-input" class="dialog-input" placeholder="输入新的对话标题">
+            </div>
+            <div class="dialog-actions">
+                <button class="dialog-btn dialog-btn-cancel" id="rename-cancel">取消</button>
+                <button class="dialog-btn dialog-btn-confirm" id="rename-confirm">确认</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 图片查看模态框 -->
+    <div class="image-modal" id="image-modal" style="display: none;">
+        <div class="image-modal-overlay" onclick="closeImageModal()"></div>
+        <div class="image-modal-content">
+            <button class="image-modal-close" onclick="closeImageModal()">×</button>
+            <img id="modal-image" src="" alt="放大查看">
+        </div>
+    </div>
+
+    <script src="https://cdn.socket.io/4.7.2/socket.io.min.js"></script>
+    <script src="renderer.js"></script>
+</body>
+</html>
