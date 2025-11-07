@@ -2,10 +2,11 @@
   "name": "desktop",
   "version": "1.0.0",
   "description": "Desktop client for MirrorCore",
-  "main": "src/main.ts",
+  "main": "dist/main.js",
   "scripts": {
-    "dev": "electron .",
-    "build": "electron-builder"
+    "build:ts": "tsc -p tsconfig.json",
+    "dev": "npm run build:ts && electron .",
+    "build": "npm run build:ts && electron-builder"
   },
   "keywords": [],
   "author": "",
@@ -14,7 +15,9 @@
     "socket.io-client": "^4.7.2"
   },
   "devDependencies": {
+    "@types/node": "^24.10.0",
     "electron": "^27.0.3",
-    "electron-builder": "^24.6.4"
+    "electron-builder": "^24.6.4",
+    "typescript": "^5.9.3"
   }
 }
