@@ -500,8 +500,8 @@ class AIService {
     
     let response = '';
 
-    // 从系统提示中解析智能体名称，默认使用 MirrorCore 智能助手
-    let assistantName = 'MirrorCore 智能助手';
+    // 从系统提示中解析智能体名称，默认使用通用名称
+    let assistantName = '智能助手';
     const systemMsg = messages.find(m => m.role === 'system')?.content;
     if (typeof systemMsg === 'string') {
       // 优先匹配“你的名字是「xxx」”格式

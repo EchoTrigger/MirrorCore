@@ -25,7 +25,9 @@ let chatSettings = {
     maxTokens: 2000,
     enableThinking: true,
     agentName: '智能助手',
-    personalityPrompt: ''
+    personalityPrompt: '',
+    agentAvatar: '',
+    userSalutation: ''
 };
 // 活跃的流式消息映射：messageId -> { messageDiv, bubble, answerEl, reasoningEl, fullAnswer, fullReasoning }
 const activeStreams = {};
@@ -194,7 +196,8 @@ async function sendMessageViaSocket(message, imageData) {
             enableThinking: chatSettings.enableThinking,
             // 传递当前自定义的智能体名称，影响服务端系统提示
             agentName: agentName,
-            personalityPrompt: chatSettings.personalityPrompt || ''
+            personalityPrompt: chatSettings.personalityPrompt || '',
+            userSalutation: chatSettings.userSalutation || ''
         }
     });
 }
@@ -212,7 +215,12 @@ function addMessage(text, sender, image = null) {
     if (sender === 'user') {
         avatar.textContent = 'U';
     } else {
-        avatar.innerHTML = '✨'; // Gemini风格的星星图标
+        if (chatSettings.agentAvatar) {
+            avatar.innerHTML = `<img src="${chatSettings.agentAvatar}" alt="助手头像">`;
+            avatar.style.background = 'transparent';
+        } else {
+            avatar.innerHTML = '✨'; // 默认图标
+        }
     }
     
     // 创建消息气泡
@@ -263,7 +271,12 @@ function createAssistantStreamMessage() {
     // 头像
     const avatar = document.createElement('div');
     avatar.className = 'message-avatar';
-    avatar.innerHTML = '✨';
+    if (chatSettings.agentAvatar) {
+        avatar.innerHTML = `<img src="${chatSettings.agentAvatar}" alt="助手头像">`;
+        avatar.style.background = 'transparent';
+    } else {
+        avatar.innerHTML = '✨';
+    }
 
     // 气泡
     const bubble = document.createElement('div');
@@ -560,6 +573,10 @@ function applySettingsToUI() {
     const modal = document.getElementById('settings-modal');
     const agentNameInput = document.getElementById('agent-name-setting');
     const personalityInput = document.getElementById('agent-personality-setting');
+    const userSalutationInput = document.getElementById('user-salutation-setting');
+    const avatarInput = document.getElementById('agent-avatar-input');
+    const avatarPreview = document.getElementById('agent-avatar-preview');
+    const removeAvatarBtn = document.getElementById('remove-agent-avatar');
     const modelInput = document.getElementById('model-input');
     const maxTokensInput = document.getElementById('max-tokens');
     const maxTokensValue = maxTokensInput ? maxTokensInput.nextElementSibling : null;
@@ -582,6 +599,16 @@ function applySettingsToUI() {
 
     if (agentNameInput) agentNameInput.value = chatSettings.agentName || agentName || '';
     if (personalityInput) personalityInput.value = chatSettings.personalityPrompt || '';
+    if (userSalutationInput) userSalutationInput.value = chatSettings.userSalutation || '';
+    if (avatarPreview) {
+        if (chatSettings.agentAvatar) {
+            avatarPreview.src = chatSettings.agentAvatar;
+            avatarPreview.style.display = 'block';
+        } else {
+            avatarPreview.src = '';
+            avatarPreview.style.display = 'none';
+        }
+    }
     if (modelInput) modelInput.value = chatSettings.model || '';
     if (maxTokensInput) maxTokensInput.value = chatSettings.maxTokens;
     if (maxTokensValue) maxTokensValue.textContent = `${chatSettings.maxTokens} tokens`;
@@ -612,6 +639,22 @@ function applySettingsToUI() {
         temperatureInput.addEventListener('input', () => {
             if (temperatureValue) temperatureValue.textContent = `${temperatureInput.value}`;
         });
+    }
+
+    // 绑定头像事件
+    if (avatarInput) {
+        avatarInput.onchange = handleAgentAvatarChange;
+    }
+    if (removeAvatarBtn) {
+        removeAvatarBtn.onclick = () => {
+            chatSettings.agentAvatar = '';
+            localStorage.setItem('chatSettings', JSON.stringify(chatSettings));
+            const preview = document.getElementById('agent-avatar-preview');
+            if (preview) {
+                preview.src = '';
+                preview.style.display = 'none';
+            }
+        };
     }
 
     // 绑定关闭/保存/重置事件
@@ -655,6 +698,8 @@ function closeSettings() {
 function saveSettings() {
     const agentNameInput = document.getElementById('agent-name-setting');
     const personalityInput = document.getElementById('agent-personality-setting');
+    const userSalutationInput = document.getElementById('user-salutation-setting');
+    const avatarPreview = document.getElementById('agent-avatar-preview');
     const modelInput = document.getElementById('model-input');
     const maxTokensInput = document.getElementById('max-tokens');
     const temperatureInput = document.getElementById('temperature');
@@ -676,6 +721,8 @@ function saveSettings() {
     const newSettings = {
         agentName: agentNameInput ? agentNameInput.value.trim() || '智能助手' : chatSettings.agentName,
         personalityPrompt: personalityInput ? personalityInput.value.trim() : chatSettings.personalityPrompt,
+        userSalutation: userSalutationInput ? userSalutationInput.value.trim() : chatSettings.userSalutation,
+        agentAvatar: avatarPreview && avatarPreview.src ? avatarPreview.src : chatSettings.agentAvatar,
         model: modelInput ? modelInput.value.trim() : chatSettings.model,
         maxTokens: maxTokensInput ? parseInt(maxTokensInput.value, 10) : chatSettings.maxTokens,
         temperature: temperatureInput ? parseFloat(temperatureInput.value) : chatSettings.temperature,
@@ -687,6 +734,7 @@ function saveSettings() {
     agentName = chatSettings.agentName || agentName;
     localStorage.setItem('chatSettings', JSON.stringify(chatSettings));
     updateAgentNameUI();
+    updateAssistantAvatarUI();
 
     // 保存通用偏好
     const newPrefs = {
@@ -712,6 +760,8 @@ function resetSettings() {
     chatSettings = {
         agentName: chatSettings.agentName || '智能助手',
         personalityPrompt: '',
+        agentAvatar: '',
+        userSalutation: '',
         model: chatSettings.model || '',
         temperature: 0.7,
         maxTokens: 2000,
@@ -745,7 +795,12 @@ function updateAgentNameUI() {
         // 更新欢迎区域副标题
         const subtitle = document.querySelector('.welcome-subtitle');
         if (subtitle) {
-            subtitle.textContent = `我是你的智能助手：${agentName}，可以帮你处理各种任务`;
+            const salutation = (chatSettings && chatSettings.userSalutation && chatSettings.userSalutation.trim()) ? chatSettings.userSalutation.trim() : '';
+            if (salutation) {
+                subtitle.textContent = `嗨，${salutation}！我是你的智能助手：${agentName}，可以帮你处理各种任务`;
+            } else {
+                subtitle.textContent = `我是你的智能助手：${agentName}，可以帮你处理各种任务`;
+            }
         }
 
         // 同步更新现有消息中的助手名称
@@ -765,6 +820,24 @@ function updateAgentNameUI() {
     }
 }
 
+// 根据设置更新现有消息中的助手头像
+function updateAssistantAvatarUI() {
+    try {
+        const avatars = document.querySelectorAll('.assistant-message .message-avatar');
+        avatars.forEach(el => {
+            if (chatSettings.agentAvatar) {
+                el.innerHTML = `<img src="${chatSettings.agentAvatar}" alt="助手头像">`;
+                el.style.background = 'transparent';
+            } else {
+                el.innerHTML = '✨';
+                el.style.background = '';
+            }
+        });
+    } catch (err) {
+        console.warn('更新助手头像展示失败:', err);
+    }
+}
+
 // 应用通用偏好至运行时（语言、主题等）
 function applyRuntimePreferences() {
     try {
@@ -778,6 +851,30 @@ function applyRuntimePreferences() {
         }
     } catch (err) {
         console.warn('应用通用偏好失败:', err);
+    }
+}
+
+// 处理智能体头像文件选择
+function handleAgentAvatarChange(e) {
+    try {
+        const file = e.target.files && e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = () => {
+            const dataUrl = reader.result;
+            if (typeof dataUrl === 'string') {
+                chatSettings.agentAvatar = dataUrl;
+                localStorage.setItem('chatSettings', JSON.stringify(chatSettings));
+                const preview = document.getElementById('agent-avatar-preview');
+                if (preview) {
+                    preview.src = dataUrl;
+                    preview.style.display = 'block';
+                }
+            }
+        };
+        reader.readAsDataURL(file);
+    } catch (err) {
+        console.warn('设置头像失败:', err);
     }
 }
 

@@ -82,20 +82,24 @@ io.on('connection', (socket) => {
         message: userMessage 
       });
 
-      // 构建AI消息历史
-      // 构建系统提示，支持自定义智能体名称与性格提示词
-      const assistantDisplayName = (options && typeof options.agentName === 'string' && options.agentName.trim().length > 0)
-        ? options.agentName.trim()
-        : 'MirrorCore 智能助手';
-      const personalityPrompt = (options && typeof options.personalityPrompt === 'string' && options.personalityPrompt.trim().length > 0)
-        ? options.personalityPrompt.trim()
-        : '';
+  // 构建AI消息历史
+  // 构建系统提示，支持自定义智能体名称与性格提示词
+  const assistantDisplayName = (options && typeof options.agentName === 'string' && options.agentName.trim().length > 0)
+    ? options.agentName.trim()
+    : '智能助手';
+  const personalityPrompt = (options && typeof options.personalityPrompt === 'string' && options.personalityPrompt.trim().length > 0)
+    ? options.personalityPrompt.trim()
+    : '';
+  const userSalutation = (options && typeof options.userSalutation === 'string' && options.userSalutation.trim().length > 0)
+    ? options.userSalutation.trim()
+    : '';
 
-      const systemPromptParts = [
-        `你的名字是「${assistantDisplayName}」。你是一个智能助手。请友好、专业地回答用户的问题，并根据对话历史提供连贯的回复。`,
-        `请在对话中使用该名字进行自我介绍和自称，不要使用其他名称（例如“MirrorCore 智能助手”）。`,
-        personalityPrompt ? `性格/风格设定：${personalityPrompt}` : ''
-      ].filter(Boolean);
+  const systemPromptParts = [
+    `你的名字是「${assistantDisplayName}」。你是一个智能助手。请友好、专业地回答用户的问题，并根据对话历史提供连贯的回复。`,
+    `请在对话中使用该名字进行自我介绍和自称，不要使用其他名称。`,
+    userSalutation ? `当直接称呼用户时，请使用「${userSalutation}」这一称呼，并保持礼貌与自然。` : '',
+    personalityPrompt ? `性格/风格设定：${personalityPrompt}` : ''
+  ].filter(Boolean);
 
       const systemPrompt = systemPromptParts.join('\n');
 

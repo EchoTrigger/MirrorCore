@@ -14,7 +14,7 @@ const router = express.Router();
 // 流式聊天消息
 router.post('/stream', async (req, res) => {
   try {
-    const { conversationId, message, imageData, enableThinking = false, model, temperature, maxTokens, agentName } = req.body;
+    const { conversationId, message, imageData, enableThinking = false, model, temperature, maxTokens, agentName, personalityPrompt } = req.body;
     
     if (!message && !imageData) {
       return res.status(400).json({ error: '消息内容不能为空' });
@@ -69,9 +69,14 @@ router.post('/stream', async (req, res) => {
       // 构建系统提示，支持自定义智能体名称
       const assistantDisplayName = (typeof agentName === 'string' && agentName.trim().length > 0)
         ? agentName.trim()
-        : 'MirrorCore 智能助手';
+        : '智能助手';
 
-      const systemPrompt = `你的名字是「${assistantDisplayName}」。你是一个本地化的 AI 助手应用。请友好、专业地回答用户的问题，并根据对话历史提供连贯的回复。请在对话中使用该名字进行自我介绍和自称，不要使用其他名称（例如“MirrorCore 智能助手”）。`;
+      const systemPromptParts = [
+        `你的名字是「${assistantDisplayName}」。你是一个智能助手。请友好、专业地回答用户的问题，并根据对话历史提供连贯的回复。`,
+        `请在对话中使用该名字进行自我介绍和自称，不要使用其他名称。`,
+        typeof personalityPrompt === 'string' && personalityPrompt.trim().length > 0 ? `性格/风格设定：${personalityPrompt.trim()}` : ''
+      ].filter(Boolean);
+      const systemPrompt = systemPromptParts.join('\n');
 
       const aiMessages: AIMessage[] = [
         {
@@ -166,7 +171,7 @@ router.post('/stream', async (req, res) => {
 // 发送聊天消息
 router.post('/message', async (req, res) => {
   try {
-    const { conversationId, message, imageData, model, temperature, maxTokens, agentName }: SendMessageRequest & { model?: string; temperature?: number; maxTokens?: number; agentName?: string } = req.body as any;
+    const { conversationId, message, imageData, model, temperature, maxTokens, agentName, personalityPrompt }: SendMessageRequest & { model?: string; temperature?: number; maxTokens?: number; agentName?: string; personalityPrompt?: string } = req.body as any;
     
     if (!message && !imageData) {
       return res.status(400).json({ error: '消息内容不能为空' });
@@ -209,7 +214,8 @@ router.post('/message', async (req, res) => {
         temperature: typeof temperature === 'number' ? temperature : undefined,
         maxTokens: typeof maxTokens === 'number' ? maxTokens : undefined
       },
-      agentName
+      agentName,
+      personalityPrompt
     );
     
     // 创建AI回复消息
@@ -412,15 +418,21 @@ async function generateAIResponse(
   messages: Message[], 
   imageData?: string,
   options?: { model?: string; temperature?: number; maxTokens?: number },
-  agentName?: string
+  agentName?: string,
+  personalityPrompt?: string
 ): Promise<string> {
   try {
     // 构建消息历史，包含系统提示
     const assistantDisplayName = (typeof agentName === 'string' && agentName.trim().length > 0)
       ? agentName.trim()
-      : 'MirrorCore 智能助手';
+      : '智能助手';
 
-    const systemPrompt = `你的名字是「${assistantDisplayName}」。你是一个本地化的 AI 助手应用。请友好、专业地回答用户的问题，并根据对话历史提供连贯的回复。请在对话中使用该名字进行自我介绍和自称，不要使用其他名称（例如“MirrorCore 智能助手”）。`;
+    const systemPromptParts = [
+      `你的名字是「${assistantDisplayName}」。你是一个智能助手。请友好、专业地回答用户的问题，并根据对话历史提供连贯的回复。`,
+      `请在对话中使用该名字进行自我介绍和自称，不要使用其他名称。`,
+      typeof personalityPrompt === 'string' && personalityPrompt.trim().length > 0 ? `性格/风格设定：${personalityPrompt.trim()}` : ''
+    ].filter(Boolean);
+    const systemPrompt = systemPromptParts.join('\n');
 
     const aiMessages: AIMessage[] = [
       {

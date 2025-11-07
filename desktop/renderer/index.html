@@ -51,7 +51,7 @@
                 <div class="welcome-section" id="welcome-section">
                     <div class="welcome-content">
                         <div class="welcome-header">
-                            <h1>你好！欢迎使用 MirrorCore</h1>
+                            <h1>你好！欢迎使用智能助手</h1>
                             <p class="welcome-subtitle">我是你的智能助手，可以帮你处理各种任务</p>
                         </div>
                         
@@ -102,7 +102,7 @@
                     <div id="image-preview" class="image-preview" style="display: none;"></div>
                 </div>
                 <div class="input-footer">
-                    <p class="disclaimer">MirrorCore 可能会出现错误。请核实重要信息。</p>
+                    <p class="disclaimer">AI 助手可能会出现错误。请核实重要信息。</p>
                 </div>
             </div>
         </div>
@@ -134,8 +134,22 @@
                                 <p class="setting-description">设置你的AI助手的名称，这将影响对话中的称呼</p>
                             </div>
                             <div class="setting-item">
+                                <label for="user-salutation-setting">对我的称呼</label>
+                                <input type="text" id="user-salutation-setting" placeholder="">
+                                <p class="setting-description">助手在回复中会使用这个称呼来亲切地称呼你（可留空）。</p>
+                            </div>
+                            <div class="setting-item">
                                 <label for="agent-personality-setting">助手性格/风格（提示词）</label>
                                 <textarea id="agent-personality-setting" rows="4" placeholder=""></textarea>
+                            </div>
+                            <div class="setting-item">
+                                <label for="agent-avatar-input">智能体头像</label>
+                                <div class="avatar-input-row" style="display: flex; align-items: center; gap: 12px;">
+                                    <input type="file" id="agent-avatar-input" accept="image/*">
+                                    <img id="agent-avatar-preview" class="avatar-preview" alt="头像预览" style="display:none; width:48px; height:48px; border-radius:50%; border:1px solid var(--outline-variant); object-fit: cover;">
+                                    <button type="button" id="remove-agent-avatar">移除头像</button>
+                                </div>
+                                <p class="setting-description">支持 JPG/PNG/WebP；头像仅保存在本地，不会上传到服务器。</p>
                             </div>
                             <div class="setting-item">
                                 <label class="toggle-label">
