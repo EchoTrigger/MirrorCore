@@ -111,9 +111,9 @@
         <div id="settings-modal" class="modal" style="display: none;">
             <div class="modal-content settings-modal">
                 <div class="modal-header">
-                    <h2><i class="fas fa-cog"></i> 设置</h2>
+                    <h2><span class="material-symbols-outlined">settings</span> 设置</h2>
                     <button class="close-btn" id="close-settings">
-                        <i class="fas fa-times"></i>
+                        <span class="material-symbols-outlined">close</span>
                     </button>
                 </div>
                 
@@ -127,11 +127,15 @@
                     <!-- Chat设置 -->
                     <div class="tab-content active" id="chat-settings">
                         <div class="settings-section">
-                            <h3><i class="fas fa-robot"></i> 智能体设置</h3>
+                            <h3><span class="material-symbols-outlined">smart_toy</span> 智能体设置</h3>
                             <div class="setting-item">
                                 <label for="agent-name-setting">智能体名称</label>
                                 <input type="text" id="agent-name-setting" placeholder="例如: 小明" value="智能助手">
                                 <p class="setting-description">设置你的AI助手的名称，这将影响对话中的称呼</p>
+                            </div>
+                            <div class="setting-item">
+                                <label for="agent-personality-setting">助手性格/风格（提示词）</label>
+                                <textarea id="agent-personality-setting" rows="4" placeholder=""></textarea>
                             </div>
                             <div class="setting-item">
                                 <label class="toggle-label">
@@ -144,7 +148,7 @@
                         </div>
 
                         <div class="settings-section">
-                            <h3><i class="fas fa-plug"></i> MCP协议</h3>
+                            <h3><span class="material-symbols-outlined">extension</span> MCP协议</h3>
                             <div class="setting-item">
                                 <label class="toggle-label">
                                     <input type="checkbox" id="enable-mcp" checked>
@@ -161,7 +165,12 @@
                         </div>
 
                         <div class="settings-section">
-                            <h3><i class="fas fa-comments"></i> 对话设置</h3>
+                            <h3><span class="material-symbols-outlined">chat</span> 对话设置</h3>
+                            <div class="setting-item">
+                                <label for="model-input">模型</label>
+                                <input type="text" id="model-input" placeholder="例如: gpt-4o-mini 或 qwen-turbo">
+                                <p class="setting-description">选择或填写要使用的模型名称（取决于当前提供商）</p>
+                            </div>
                             <div class="setting-item">
                                 <label for="max-tokens">最大回复长度</label>
                                 <input type="range" id="max-tokens" min="100" max="4000" value="2000" step="100">
@@ -174,13 +183,21 @@
                                 <span class="range-value">0.7</span>
                                 <p class="setting-description">数值越高，回复越有创意；数值越低，回复越准确</p>
                             </div>
+                            <div class="setting-item">
+                                <label class="toggle-label">
+                                    <input type="checkbox" id="enable-thinking" checked>
+                                    <span class="toggle-slider"></span>
+                                    启用思考过程（reasoning）
+                                </label>
+                                <p class="setting-description">如果模型支持，将实时展示思考过程内容</p>
+                            </div>
                         </div>
                     </div>
 
                     <!-- Builder设置 -->
                     <div class="tab-content" id="builder-settings">
                         <div class="settings-section">
-                            <h3><i class="fas fa-tools"></i> 构建器设置</h3>
+                            <h3><span class="material-symbols-outlined">build</span> 构建器设置</h3>
                             <div class="setting-item">
                                 <label class="toggle-label">
                                     <input type="checkbox" id="enable-builder" checked>
@@ -200,7 +217,7 @@
                         </div>
 
                         <div class="settings-section">
-                            <h3><i class="fas fa-database"></i> 数据管理</h3>
+                            <h3><span class="material-symbols-outlined">storage</span> 数据管理</h3>
                             <div class="setting-item">
                                 <label for="data-retention">数据保留期限</label>
                                 <select id="data-retention">
@@ -218,7 +235,7 @@
                     <!-- 通用设置 -->
                     <div class="tab-content" id="general-settings">
                         <div class="settings-section">
-                            <h3><i class="fas fa-palette"></i> 界面设置</h3>
+                            <h3><span class="material-symbols-outlined">palette</span> 界面设置</h3>
                             <div class="setting-item">
                                 <label for="theme-select">主题</label>
                                 <select id="theme-select">
@@ -240,7 +257,7 @@
                         </div>
 
                         <div class="settings-section">
-                            <h3><i class="fas fa-bell"></i> 通知设置</h3>
+                            <h3><span class="material-symbols-outlined">notifications</span> 通知设置</h3>
                             <div class="setting-item">
                                 <label class="toggle-label">
                                     <input type="checkbox" id="enable-notifications" checked>
@@ -260,7 +277,7 @@
                         </div>
 
                         <div class="settings-section">
-                            <h3><i class="fas fa-shield-alt"></i> 隐私与安全</h3>
+                            <h3><span class="material-symbols-outlined">shield</span> 隐私与安全</h3>
                             <div class="setting-item">
                                 <label class="toggle-label">
                                     <input type="checkbox" id="enable-analytics">
@@ -271,7 +288,7 @@
                             </div>
                             <div class="setting-item">
                                 <button class="danger-btn" id="clear-data-btn">
-                                    <i class="fas fa-trash"></i>
+                                    <span class="material-symbols-outlined">delete</span>
                                     清除所有数据
                                 </button>
                                 <p class="setting-description">删除所有聊天记录和用户数据</p>
@@ -280,11 +297,11 @@
 
                         <div class="settings-actions">
                             <button class="primary-btn" id="save-settings-btn">
-                                <i class="fas fa-save"></i>
+                                <span class="material-symbols-outlined">save</span>
                                 保存设置
                             </button>
                             <button class="secondary-btn" id="reset-settings-btn">
-                                <i class="fas fa-undo"></i>
+                                <span class="material-symbols-outlined">undo</span>
                                 重置为默认
                             </button>
                         </div>
@@ -297,22 +314,22 @@
         <div id="memory-modal" class="modal" style="display: none;">
             <div class="modal-content memory-modal">
                 <div class="modal-header">
-                    <h2><i class="fas fa-brain"></i> 记忆管理</h2>
+                    <h2><span class="material-symbols-outlined">psychology</span> 记忆管理</h2>
                     <button class="close-btn" id="close-memory">
-                        <i class="fas fa-times"></i>
+                        <span class="material-symbols-outlined">close</span>
                     </button>
                 </div>
                 
                 <div class="memory-content">
                     <div class="memory-section">
-                        <h3><i class="fas fa-user"></i> 个人偏好</h3>
+                        <h3><span class="material-symbols-outlined">person</span> 个人偏好</h3>
                         <div id="memory-preferences" class="memory-grid">
                             <!-- 动态加载的偏好数据 -->
                         </div>
                     </div>
                     
                     <div class="memory-section">
-                        <h3><i class="fas fa-chart-bar"></i> 使用统计</h3>
+                        <h3><span class="material-symbols-outlined">bar_chart</span> 使用统计</h3>
                         <div id="memory-stats" class="stats-grid">
                             <!-- 动态加载的统计数据 -->
                         </div>
@@ -353,6 +370,23 @@
             <div class="dialog-actions">
                 <button class="dialog-btn dialog-btn-cancel" id="rename-cancel">取消</button>
                 <button class="dialog-btn dialog-btn-confirm" id="rename-confirm">确认</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- 删除对话确认框（二次确认，主题统一） -->
+    <div id="delete-dialog" class="dialog-overlay" style="display: none;">
+        <div class="dialog">
+            <div class="dialog-header">
+                <h3>要删除对话吗？</h3>
+            </div>
+            <div class="dialog-content">
+                <p class="confirm-text">此操作将从应用活动记录中删除提示、回答和反馈，以及你创建的所有内容。</p>
+                <p id="delete-error" class="confirm-error" style="display: none;"></p>
+            </div>
+            <div class="dialog-actions">
+                <button class="dialog-btn dialog-btn-cancel" id="delete-cancel">取消</button>
+                <button class="dialog-btn dialog-btn-confirm" id="delete-confirm">删除</button>
             </div>
         </div>
     </div>

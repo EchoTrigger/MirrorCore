@@ -120,14 +120,22 @@ class AIService {
     }
   }
 
-  // 生成 AI 响应
-  async generateResponse(messages: AIMessage[], imageData?: string): Promise<AIResponse> {
+  // 每次请求的可选参数
+  public static defaultTemperature = 0.7;
+  public static defaultMaxTokens = 2000;
+
+  // 生成 AI 响应（支持每次请求的自定义参数）
+  async generateResponse(
+    messages: AIMessage[], 
+    imageData?: string,
+    options?: { model?: string; temperature?: number; maxTokens?: number; enableThinking?: boolean }
+  ): Promise<AIResponse> {
     try {
       switch (this.config.provider) {
         case 'openai':
-          return await this.generateOpenAIResponse(messages, imageData);
+          return await this.generateOpenAIResponse(messages, imageData, options);
         case 'qwen':
-          return await this.generateQwenResponse(messages, imageData);
+          return await this.generateQwenResponse(messages, imageData, options);
         case 'claude':
           return await this.generateClaudeResponse(messages, imageData);
         case 'local':
@@ -141,19 +149,23 @@ class AIService {
     }
   }
 
-  // 生成流式 AI 响应
-  async* generateStreamResponse(messages: AIMessage[], imageData?: string, enableThinking: boolean = false): AsyncGenerator<AIStreamResponse> {
+  // 生成流式 AI 响应（支持每次请求的自定义参数）
+  async* generateStreamResponse(
+    messages: AIMessage[], 
+    imageData?: string, 
+    options: { model?: string; temperature?: number; maxTokens?: number; enableThinking?: boolean } = {}
+  ): AsyncGenerator<AIStreamResponse> {
     try {
       switch (this.config.provider) {
         case 'qwen':
-          yield* this.generateQwenStreamResponse(messages, imageData, enableThinking);
+          yield* this.generateQwenStreamResponse(messages, imageData, options);
           break;
         case 'openai':
-          yield* this.generateOpenAIStreamResponse(messages, imageData);
+          yield* this.generateOpenAIStreamResponse(messages, imageData, options);
           break;
         default:
           // 对于不支持流式的提供商，返回单次响应
-          const response = await this.generateResponse(messages, imageData);
+          const response = await this.generateResponse(messages, imageData, options);
           yield {
             content: response.content,
             reasoning_content: response.reasoning_content,
@@ -177,12 +189,18 @@ class AIService {
   }
 
   // OpenAI 响应生成
-  private async generateOpenAIResponse(messages: AIMessage[], imageData?: string): Promise<AIResponse> {
+  private async generateOpenAIResponse(
+    messages: AIMessage[], 
+    imageData?: string,
+    options?: { model?: string; temperature?: number; maxTokens?: number }
+  ): Promise<AIResponse> {
     if (!this.openaiClient) {
       throw new Error('OpenAI 客户端未初始化');
     }
 
-    const model = this.config.model || 'gpt-3.5-turbo';
+    const model = options?.model || this.config.model || 'gpt-3.5-turbo';
+    const maxTokens = options?.maxTokens ?? AIService.defaultMaxTokens;
+    const temperature = options?.temperature ?? AIService.defaultTemperature;
     
     // 处理图片消息
     const formattedMessages = messages.map(msg => {
@@ -209,8 +227,8 @@ class AIService {
     const completion = await this.openaiClient.chat.completions.create({
       model: model,
       messages: formattedMessages as any,
-      max_tokens: 2000,
-      temperature: 0.7
+      max_tokens: maxTokens,
+      temperature: temperature
     });
 
     return {
@@ -222,12 +240,18 @@ class AIService {
   }
 
   // 通义千问响应生成
-  private async generateQwenResponse(messages: AIMessage[], imageData?: string): Promise<AIResponse> {
+  private async generateQwenResponse(
+    messages: AIMessage[], 
+    imageData?: string,
+    options?: { model?: string; temperature?: number; maxTokens?: number }
+  ): Promise<AIResponse> {
     if (!this.openaiClient) {
       throw new Error('通义千问客户端未初始化');
     }
 
-    const model = this.config.model || 'qwen-turbo';
+    const model = options?.model || this.config.model || 'qwen-turbo';
+    const maxTokens = options?.maxTokens ?? AIService.defaultMaxTokens;
+    const temperature = options?.temperature ?? AIService.defaultTemperature;
     
     // 处理图片消息和多模态内容
     const formattedMessages = this.formatMessagesForQwen(messages, imageData);
@@ -235,8 +259,8 @@ class AIService {
     const completion = await this.openaiClient.chat.completions.create({
       model: model,
       messages: formattedMessages as any,
-      max_tokens: 2000,
-      temperature: 0.7
+      max_tokens: maxTokens,
+      temperature: temperature
     });
 
     return {
@@ -248,12 +272,19 @@ class AIService {
   }
 
   // 通义千问流式响应生成
-  private async* generateQwenStreamResponse(messages: AIMessage[], imageData?: string, enableThinking: boolean = false): AsyncGenerator<AIStreamResponse> {
+  private async* generateQwenStreamResponse(
+    messages: AIMessage[], 
+    imageData?: string,
+    options: { model?: string; temperature?: number; maxTokens?: number; enableThinking?: boolean } = {}
+  ): AsyncGenerator<AIStreamResponse> {
     if (!this.openaiClient) {
       throw new Error('通义千问客户端未初始化');
     }
 
-    const model = this.config.model || 'qwen-turbo';
+    const model = options?.model || this.config.model || 'qwen-turbo';
+    const maxTokens = options?.maxTokens ?? AIService.defaultMaxTokens;
+    const temperature = options?.temperature ?? AIService.defaultTemperature;
+    const enableThinking = options?.enableThinking === true;
     
     // 处理图片消息和多模态内容
     const formattedMessages = this.formatMessagesForQwen(messages, imageData);
@@ -262,8 +293,8 @@ class AIService {
       model: model,
       messages: formattedMessages as any,
       stream: true,
-      max_tokens: 2000,
-      temperature: 0.7,
+      max_tokens: maxTokens,
+      temperature: temperature,
       // 通义千问特有的思考功能参数
       ...(enableThinking && model.includes('qwen3') && {
         enable_thinking: true,
@@ -325,12 +356,18 @@ class AIService {
   }
 
   // OpenAI 流式响应生成
-  private async* generateOpenAIStreamResponse(messages: AIMessage[], imageData?: string): AsyncGenerator<AIStreamResponse> {
+  private async* generateOpenAIStreamResponse(
+    messages: AIMessage[], 
+    imageData?: string,
+    options?: { model?: string; temperature?: number; maxTokens?: number }
+  ): AsyncGenerator<AIStreamResponse> {
     if (!this.openaiClient) {
       throw new Error('OpenAI 客户端未初始化');
     }
 
-    const model = this.config.model || 'gpt-3.5-turbo';
+    const model = options?.model || this.config.model || 'gpt-3.5-turbo';
+    const maxTokens = options?.maxTokens ?? AIService.defaultMaxTokens;
+    const temperature = options?.temperature ?? AIService.defaultTemperature;
     
     // 处理图片消息
     const formattedMessages = messages.map(msg => {
@@ -358,8 +395,8 @@ class AIService {
       model: model,
       messages: formattedMessages as any,
       stream: true,
-      max_tokens: 2000,
-      temperature: 0.7
+      max_tokens: maxTokens,
+      temperature: temperature
     });
 
     for await (const chunk of stream) {
@@ -463,10 +500,27 @@ class AIService {
     
     let response = '';
 
+    // 从系统提示中解析智能体名称，默认使用 MirrorCore 智能助手
+    let assistantName = 'MirrorCore 智能助手';
+    const systemMsg = messages.find(m => m.role === 'system')?.content;
+    if (typeof systemMsg === 'string') {
+      // 优先匹配“你的名字是「xxx」”格式
+      const nameMatch = systemMsg.match(/你的名字是「(.+?)」/);
+      if (nameMatch && nameMatch[1]) {
+        assistantName = nameMatch[1];
+      } else {
+        // 兼容旧格式：“你是 xxx 的智能助手”
+        const oldMatch = systemMsg.match(/你是\s*(.*?)\s*的智能助手/);
+        if (oldMatch && oldMatch[1]) {
+          assistantName = `${oldMatch[1]} 的智能助手`;
+        }
+      }
+    }
+
     if (imageData) {
       response = '我看到您发送了一张图片。由于当前使用的是本地模拟模式，我无法分析图片内容。请配置 AI 服务以获得图片分析功能。';
     } else if (messageText.includes('你好') || messageText.includes('hello')) {
-      response = '您好！我是 MirrorCore 的智能助手。很高兴为您服务！';
+      response = `您好！我是 ${assistantName}。很高兴为您服务！`;
     } else if (messageText.includes('天气')) {
       response = '抱歉，我无法获取实时天气信息。请配置 AI 服务以获得更多功能。';
     } else if (messageText.includes('时间') || messageText.includes('日期')) {

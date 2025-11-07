@@ -1,5 +1,6 @@
 import 'dotenv/config';
 import express from 'express';
+import path from 'path';
 import cors from 'cors';
 import { createServer } from 'http';
 import { Server as SocketIOServer } from 'socket.io';
@@ -24,6 +25,9 @@ app.use(express.urlencoded({ extended: true }));
 // 路由
 app.use('/api/chat', chatRoutes);
 
+// 提供前端页面预览（用于开发联调）
+app.use('/preview', express.static(path.resolve(__dirname, '../../desktop/renderer')));
+
 app.get('/', (req, res) => {
   res.send('MirrorCore Backend Server is running!');
 });
@@ -35,7 +39,7 @@ io.on('connection', (socket) => {
   // 处理流式聊天请求
   socket.on('stream_chat', async (data) => {
     try {
-      const { conversationId, message, imageData, enableThinking = false } = data;
+      const { conversationId, message, imageData, enableThinking = false, options } = data;
       
       // 导入必要的模块
       const { v4: uuidv4 } = require('uuid');
@@ -79,10 +83,26 @@ io.on('connection', (socket) => {
       });
 
       // 构建AI消息历史
+      // 构建系统提示，支持自定义智能体名称与性格提示词
+      const assistantDisplayName = (options && typeof options.agentName === 'string' && options.agentName.trim().length > 0)
+        ? options.agentName.trim()
+        : 'MirrorCore 智能助手';
+      const personalityPrompt = (options && typeof options.personalityPrompt === 'string' && options.personalityPrompt.trim().length > 0)
+        ? options.personalityPrompt.trim()
+        : '';
+
+      const systemPromptParts = [
+        `你的名字是「${assistantDisplayName}」。你是一个智能助手。请友好、专业地回答用户的问题，并根据对话历史提供连贯的回复。`,
+        `请在对话中使用该名字进行自我介绍和自称，不要使用其他名称（例如“MirrorCore 智能助手”）。`,
+        personalityPrompt ? `性格/风格设定：${personalityPrompt}` : ''
+      ].filter(Boolean);
+
+      const systemPrompt = systemPromptParts.join('\n');
+
       const aiMessages = [
         {
           role: 'system',
-          content: '你是 MirrorCore 的智能助手，一个本地化的 AI 助手应用。你需要友好、专业地回答用户的问题。请根据对话历史提供连贯的回复。'
+          content: systemPrompt
         }
       ];
 
@@ -106,7 +126,11 @@ io.on('connection', (socket) => {
       });
 
       try {
-        for await (const chunk of aiService.generateStreamResponse(aiMessages, imageData, enableThinking)) {
+        const aiOptions = {
+          ...(options || {}),
+          enableThinking: (options && typeof options.enableThinking === 'boolean') ? options.enableThinking : enableThinking
+        };
+        for await (const chunk of aiService.generateStreamResponse(aiMessages, imageData, aiOptions)) {
           if (chunk.content) {
             fullContent += chunk.content;
             socket.emit('stream_content', {

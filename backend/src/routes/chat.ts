@@ -14,7 +14,7 @@ const router = express.Router();
 // 流式聊天消息
 router.post('/stream', async (req, res) => {
   try {
-    const { conversationId, message, imageData, enableThinking = false } = req.body;
+    const { conversationId, message, imageData, enableThinking = false, model, temperature, maxTokens, agentName } = req.body;
     
     if (!message && !imageData) {
       return res.status(400).json({ error: '消息内容不能为空' });
@@ -66,10 +66,17 @@ router.post('/stream', async (req, res) => {
 
     try {
       // 构建AI消息历史
+      // 构建系统提示，支持自定义智能体名称
+      const assistantDisplayName = (typeof agentName === 'string' && agentName.trim().length > 0)
+        ? agentName.trim()
+        : 'MirrorCore 智能助手';
+
+      const systemPrompt = `你的名字是「${assistantDisplayName}」。你是一个本地化的 AI 助手应用。请友好、专业地回答用户的问题，并根据对话历史提供连贯的回复。请在对话中使用该名字进行自我介绍和自称，不要使用其他名称（例如“MirrorCore 智能助手”）。`;
+
       const aiMessages: AIMessage[] = [
         {
           role: 'system',
-          content: '你是 MirrorCore 的智能助手，一个本地化的 AI 助手应用。你需要友好、专业地回答用户的问题。请根据对话历史提供连贯的回复。'
+          content: systemPrompt
         }
       ];
 
@@ -86,7 +93,13 @@ router.post('/stream', async (req, res) => {
       let fullReasoningContent = '';
       const aiMessageId = uuidv4();
 
-      for await (const chunk of aiService.generateStreamResponse(aiMessages, imageData, enableThinking)) {
+      const options = {
+        model,
+        temperature: typeof temperature === 'number' ? temperature : undefined,
+        maxTokens: typeof maxTokens === 'number' ? maxTokens : undefined,
+        enableThinking
+      };
+      for await (const chunk of aiService.generateStreamResponse(aiMessages, imageData, options)) {
         if (chunk.content) {
           fullContent += chunk.content;
           res.write(`data: ${JSON.stringify({
@@ -153,7 +166,7 @@ router.post('/stream', async (req, res) => {
 // 发送聊天消息
 router.post('/message', async (req, res) => {
   try {
-    const { conversationId, message, imageData }: SendMessageRequest = req.body;
+    const { conversationId, message, imageData, model, temperature, maxTokens, agentName }: SendMessageRequest & { model?: string; temperature?: number; maxTokens?: number; agentName?: string } = req.body as any;
     
     if (!message && !imageData) {
       return res.status(400).json({ error: '消息内容不能为空' });
@@ -188,7 +201,16 @@ router.post('/message', async (req, res) => {
     }
 
     // 生成AI回复
-    const aiResponseContent = await generateAIResponse(conversation.messages.concat(userMessage), imageData);
+    const aiResponseContent = await generateAIResponse(
+      conversation.messages.concat(userMessage), 
+      imageData,
+      {
+        model,
+        temperature: typeof temperature === 'number' ? temperature : undefined,
+        maxTokens: typeof maxTokens === 'number' ? maxTokens : undefined
+      },
+      agentName
+    );
     
     // 创建AI回复消息
     const aiMessage: Message = {
@@ -386,13 +408,24 @@ router.post('/extensions/:extensionName', async (req, res) => {
 });
 
 // 生成AI回复
-async function generateAIResponse(messages: Message[], imageData?: string): Promise<string> {
+async function generateAIResponse(
+  messages: Message[], 
+  imageData?: string,
+  options?: { model?: string; temperature?: number; maxTokens?: number },
+  agentName?: string
+): Promise<string> {
   try {
     // 构建消息历史，包含系统提示
+    const assistantDisplayName = (typeof agentName === 'string' && agentName.trim().length > 0)
+      ? agentName.trim()
+      : 'MirrorCore 智能助手';
+
+    const systemPrompt = `你的名字是「${assistantDisplayName}」。你是一个本地化的 AI 助手应用。请友好、专业地回答用户的问题，并根据对话历史提供连贯的回复。请在对话中使用该名字进行自我介绍和自称，不要使用其他名称（例如“MirrorCore 智能助手”）。`;
+
     const aiMessages: AIMessage[] = [
       {
         role: 'system',
-        content: '你是 MirrorCore 的智能助手，一个本地化的 AI 助手应用。你需要友好、专业地回答用户的问题。请根据对话历史提供连贯的回复。'
+        content: systemPrompt
       }
     ];
 
@@ -405,7 +438,7 @@ async function generateAIResponse(messages: Message[], imageData?: string): Prom
     aiMessages.push(...recentMessages);
 
     // 使用 AI 服务生成响应
-    const aiResponse = await aiService.generateResponse(aiMessages, imageData);
+    const aiResponse = await aiService.generateResponse(aiMessages, imageData, options);
     return aiResponse.content;
   } catch (error) {
     console.error('AI 服务错误:', error);
