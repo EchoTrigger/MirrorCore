@@ -191,3 +191,7 @@ release/
 # Local data
 data/conversations/*
 !data/conversations/.gitkeep
+# Privacy: ignore personal conversation logs
+backend/data/conversations/**/*.json
+backend/data/conversations/*.json
+!backend/data/conversations/.gitkeep
