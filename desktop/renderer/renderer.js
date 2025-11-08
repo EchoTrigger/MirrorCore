@@ -112,6 +112,9 @@ function bindEventListeners() {
     
     // 初始化右键菜单
     initContextMenu();
+
+    // 绑定设置面板标签点击滚动行为
+    bindSettingsTabScroll();
 }
 
 // 显示聊天界面
@@ -692,6 +695,39 @@ function closeSettings() {
     if (modal) {
         modal.style.display = 'none';
         document.removeEventListener('keydown', handleSettingsEsc);
+    }
+}
+
+// 设置面板：点击上方标签（Chat / Builder / 通用）平滑滚动到对应内容位置
+function bindSettingsTabScroll() {
+    try {
+        const modal = document.getElementById('settings-modal');
+        const tabs = document.querySelectorAll('#settings-modal .settings-tabs .tab-btn');
+        const contentContainer = document.querySelector('#settings-modal .settings-content');
+
+        if (!modal || !tabs || !contentContainer) return;
+
+        tabs.forEach(btn => {
+            btn.addEventListener('click', (e) => {
+                e.preventDefault();
+                const targetId = btn.getAttribute('data-tab');
+                if (!targetId) return;
+                const targetEl = document.getElementById(targetId);
+                if (!targetEl) return;
+
+                // 切换激活样式
+                tabs.forEach(b => b.classList.remove('active'));
+                btn.classList.add('active');
+
+                // 计算目标在容器中的相对位置并平滑滚动
+                const containerRect = contentContainer.getBoundingClientRect();
+                const targetRect = targetEl.getBoundingClientRect();
+                const topOffset = targetRect.top - containerRect.top + contentContainer.scrollTop;
+                contentContainer.scrollTo({ top: topOffset, behavior: 'smooth' });
+            });
+        });
+    } catch (err) {
+        console.warn('绑定设置标签滚动失败:', err);
     }
 }
 
