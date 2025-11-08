@@ -194,4 +194,7 @@ data/conversations/*
 # Privacy: ignore personal conversation logs
 backend/data/conversations/**/*.json
 backend/data/conversations/*.json
+
 !backend/data/conversations/.gitkeep
+
+coze-studio/
