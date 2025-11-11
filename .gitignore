@@ -196,5 +196,3 @@ backend/data/conversations/**/*.json
 backend/data/conversations/*.json
 
 !backend/data/conversations/.gitkeep
-
-coze-studio/

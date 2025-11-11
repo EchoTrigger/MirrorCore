@@ -19,6 +19,16 @@ let currentConversationId = null;
 let conversations = [];
 let socket = null; // Socket.IO 连接
 let enableThinking = true; // 是否请求服务端返回“思考过程”（与设置联动）
+// 搜索运行时配置（从后端读取/保存）
+let searchRuntimeConfig = {
+    method: 'auto',
+    engine: 'bing',
+    maxResults: 8,
+    locale: 'zh-CN',
+    headless: true,
+    timeoutMs: 30000,
+    maxQuestions: 3
+};
 let chatSettings = {
     model: '',
     temperature: 0.7,
@@ -46,6 +56,14 @@ const sidebar = document.getElementById('sidebar');
 const conversationsList = document.getElementById('conversations-list');
 const newChatBtn = document.getElementById('new-chat-btn');
 const sidebarToggle = document.getElementById('sidebar-toggle');
+// 搜索面板元素
+const searchSection = document.getElementById('search-section');
+const openSearchPanelBtn = document.getElementById('open-search-panel');
+const closeSearchPanelBtn = document.getElementById('close-search-panel');
+const searchInputEl = document.getElementById('search-input');
+const searchBtnEl = document.getElementById('search-btn');
+const searchStatusEl = document.getElementById('search-status');
+const searchResultsEl = document.getElementById('search-results');
 
 // 初始化
 document.addEventListener('DOMContentLoaded', async () => {
@@ -109,12 +127,39 @@ function bindEventListeners() {
     if (newChatBtn) {
         newChatBtn.addEventListener('click', startNewConversation);
     }
-    
+
     // 初始化右键菜单
     initContextMenu();
 
     // 绑定设置面板标签点击滚动行为
     bindSettingsTabScroll();
+
+    // 搜索面板入口
+    if (openSearchPanelBtn) {
+        openSearchPanelBtn.addEventListener('click', openSearchPanel);
+    }
+    if (closeSearchPanelBtn) {
+        closeSearchPanelBtn.addEventListener('click', closeSearchPanel);
+    }
+    if (searchBtnEl) {
+        searchBtnEl.addEventListener('click', () => {
+            const q = (searchInputEl?.value || '').trim();
+            if (!q) {
+                setSearchStatus('请输入关键词', 'error');
+                return;
+            }
+            performSearch(q);
+        });
+    }
+    if (searchInputEl) {
+        searchInputEl.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                const q = (searchInputEl?.value || '').trim();
+                if (!q) return;
+                performSearch(q);
+            }
+        });
+    }
 }
 
 // 显示聊天界面
@@ -139,6 +184,110 @@ function showWelcomeMessage() {
             <p>试试对我说："你好" 或 "帮我搜索信息"</p>
         `;
     }
+}
+
+// 打开搜索面板
+function openSearchPanel() {
+    if (searchSection) {
+        searchSection.style.display = 'block';
+    }
+    const welcomeSection = document.getElementById('welcome-section');
+    if (welcomeSection) {
+        welcomeSection.style.display = 'none';
+    }
+    const messagesContainer = document.getElementById('messages-container');
+    if (messagesContainer) {
+        messagesContainer.style.display = 'none';
+    }
+    if (searchInputEl) {
+        searchInputEl.focus();
+    }
+}
+
+function closeSearchPanel() {
+    if (searchSection) {
+        searchSection.style.display = 'none';
+    }
+    const welcomeSection = document.getElementById('welcome-section');
+    if (welcomeSection) {
+        welcomeSection.style.display = '';
+    }
+}
+
+function setSearchStatus(text, type = 'info') {
+    if (!searchStatusEl) return;
+    searchStatusEl.style.display = text ? 'block' : 'none';
+    searchStatusEl.textContent = text || '';
+    searchStatusEl.style.background = type === 'error' ? 'var(--error-container)' : 'var(--surface-container)';
+    searchStatusEl.style.color = type === 'error' ? 'var(--on-error-container)' : 'var(--on-surface-variant)';
+}
+
+async function performSearch(query) {
+    try {
+        setSearchStatus('正在搜索中...');
+        if (searchResultsEl) searchResultsEl.innerHTML = '';
+        const params = new URLSearchParams({ query });
+        const res = await fetch(`/api/search?${params.toString()}`);
+        if (!res.ok) {
+            const text = await res.text();
+            throw new Error(text || `HTTP ${res.status}`);
+        }
+        const data = await res.json();
+        const { results = [], engineUsed, modeUsed } = data || {};
+        setSearchStatus(`搜索完成（模式：${modeUsed || 'auto'}；引擎：${engineUsed || 'auto'}；条数：${results.length}）`);
+        renderSearchResults(results);
+    } catch (err) {
+        setSearchStatus(`搜索失败：${(err && err.message) || String(err)}`, 'error');
+    }
+}
+
+function renderSearchResults(results) {
+    if (!Array.isArray(results)) return;
+    if (!searchResultsEl) return;
+    if (results.length === 0) {
+        searchResultsEl.innerHTML = '<div class="search-status">未找到相关结果</div>';
+        return;
+    }
+    const frag = document.createDocumentFragment();
+    for (const item of results) {
+        const el = document.createElement('div');
+        el.className = 'search-result-item';
+        const safeTitle = escapeHtml(item.title || '无标题');
+        const safeSnippet = escapeHtml(item.snippet || '');
+        const url = item.url || '#';
+        const source = item.source || 'unknown';
+        const sourceMeta = getSourceMeta(source);
+        el.innerHTML = `
+            <div class="search-result-title"><a href="${url}" target="_blank" rel="noopener noreferrer">${safeTitle}</a></div>
+            <div class="search-result-snippet">${safeSnippet}</div>
+            <div class="search-result-meta">
+                <span class="source-badge"><span class="material-symbols-outlined source-icon">${sourceMeta.icon}</span>${sourceMeta.label}</span>
+                <span class="on-surface-variant" style="font-size: var(--font-size-xs);">${escapeHtml(url)}</span>
+            </div>
+        `;
+        frag.appendChild(el);
+    }
+    searchResultsEl.innerHTML = '';
+    searchResultsEl.appendChild(frag);
+}
+
+function getSourceMeta(source) {
+    switch (source) {
+        case 'google': return { icon: 'language', label: 'Google' };
+        case 'bing': return { icon: 'globe', label: 'Bing' };
+        case 'baidu': return { icon: 'public', label: 'Baidu' };
+        case 'duckduckgo': return { icon: 'shield', label: 'DuckDuckGo' };
+        default: return { icon: 'help', label: String(source || '未知') };
+    }
+}
+
+function escapeHtml(str) {
+    return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#039;');
 }
 
 // 发送消息
@@ -171,7 +320,55 @@ async function sendMessage() {
 
 // 处理消息
 async function processMessage(message, imageData) {
-    // 走 WebSocket 实时流
+    // 优先尝试：使用后端 LLM 解析“打开<站点>并搜索<关键词>”
+    try {
+        const llmIntent = await tryLLMParseSiteSearch(message);
+        if (llmIntent && llmIntent.type === 'open') {
+            try {
+                const url = llmIntent.url;
+                window.open(url, '_blank', 'noopener,noreferrer');
+                addMessage(`已在浏览器中打开 ${llmIntent.name || url}`, 'assistant');
+            } catch (e) {
+                addMessage(`打开失败：${(e && e.message) || String(e)}`, 'assistant');
+            }
+            return;
+        }
+    } catch (e) {
+        console.warn('LLM 站点搜索意图解析失败，继续本地规则：', e);
+    }
+
+    // 智能意图识别与模式切换
+    const intent = detectSmartIntent(message);
+    if (intent && intent.type === 'open') {
+        try {
+            const url = intent.url;
+            window.open(url, '_blank', 'noopener,noreferrer');
+            addMessage(`已在浏览器中打开 ${intent.name || url}`, 'assistant');
+        } catch (e) {
+            addMessage(`打开失败：${(e && e.message) || String(e)}`, 'assistant');
+        }
+        return;
+    }
+
+    if (intent && (intent.type === 'search_fast' || intent.type === 'search_research' || intent.type === 'search_cn')) {
+        try {
+            await performSmartSearchAndSummarize(message, intent);
+        } catch (e) {
+            addMessage(`搜索分析失败：${(e && e.message) || String(e)}`, 'assistant');
+        }
+        return;
+    }
+
+    if (intent && intent.type === 'summarize_url') {
+        try {
+            await performUrlVisitAndSummarize(intent.url, intent.headed === true);
+        } catch (e) {
+            addMessage(`网址总结失败：${(e && e.message) || String(e)}`, 'assistant');
+        }
+        return;
+    }
+
+    // 默认：走 WebSocket 实时流
     await sendMessageViaSocket(message, imageData);
 }
 
@@ -565,6 +762,25 @@ async function initSettings() {
         updateAgentNameUI();
         // 应用通用偏好至运行时（语言、主题等）
         applyRuntimePreferences();
+        // 从后端拉取搜索运行时配置
+        try {
+            const respSearch = await fetch('http://localhost:3000/api/settings/search');
+            if (respSearch.ok) {
+                const data = await respSearch.json();
+                const rt = data?.runtime || {};
+                searchRuntimeConfig = {
+                    method: rt.method || searchRuntimeConfig.method,
+                    engine: rt.engine || searchRuntimeConfig.engine,
+                    maxResults: typeof rt.maxResults === 'number' ? rt.maxResults : searchRuntimeConfig.maxResults,
+                    locale: rt.locale || searchRuntimeConfig.locale,
+                    headless: typeof rt.headless === 'boolean' ? rt.headless : searchRuntimeConfig.headless,
+                    timeoutMs: typeof rt.timeoutMs === 'number' ? rt.timeoutMs : searchRuntimeConfig.timeoutMs,
+                    maxQuestions: typeof rt.maxQuestions === 'number' ? rt.maxQuestions : searchRuntimeConfig.maxQuestions
+                };
+            }
+        } catch (err) {
+            console.warn('加载搜索设置失败:', err);
+        }
         // 初始化设置面板的显示值
         applySettingsToUI();
     } catch (e) {
@@ -600,6 +816,14 @@ function applySettingsToUI() {
     const enableSoundInput = document.getElementById('enable-sound');
     const enableAnalyticsInput = document.getElementById('enable-analytics');
 
+    // 搜索设置元素
+    const searchMethodSelect = document.getElementById('search-method-select');
+    const searchEngineSelect = document.getElementById('search-engine-select');
+    const searchMaxResultsInput = document.getElementById('search-max-results');
+    const searchLocaleSelect = document.getElementById('search-locale');
+    const searchHeadlessInput = document.getElementById('search-headless');
+    const searchTimeoutInput = document.getElementById('search-timeout-ms');
+
     if (agentNameInput) agentNameInput.value = chatSettings.agentName || agentName || '';
     if (personalityInput) personalityInput.value = chatSettings.personalityPrompt || '';
     if (userSalutationInput) userSalutationInput.value = chatSettings.userSalutation || '';
@@ -631,6 +855,14 @@ function applySettingsToUI() {
     if (enableNotificationsInput) enableNotificationsInput.checked = !!appPreferences.enableNotifications;
     if (enableSoundInput) enableSoundInput.checked = !!appPreferences.enableSound;
     if (enableAnalyticsInput) enableAnalyticsInput.checked = !!appPreferences.enableAnalytics;
+
+    // 应用搜索设置到UI
+    if (searchMethodSelect) searchMethodSelect.value = searchRuntimeConfig.method || 'auto';
+    if (searchEngineSelect) searchEngineSelect.value = searchRuntimeConfig.engine || 'bing';
+    if (searchMaxResultsInput) searchMaxResultsInput.value = String(searchRuntimeConfig.maxResults || 8);
+    if (searchLocaleSelect) searchLocaleSelect.value = searchRuntimeConfig.locale || 'zh-CN';
+    if (searchHeadlessInput) searchHeadlessInput.checked = !!searchRuntimeConfig.headless;
+    if (searchTimeoutInput) searchTimeoutInput.value = String(searchRuntimeConfig.timeoutMs || 30000);
 
     // 绑定输入的变化以更新显示值
     if (maxTokensInput) {
@@ -789,6 +1021,39 @@ function saveSettings() {
     appPreferences = { ...appPreferences, ...newPrefs };
     localStorage.setItem('appPreferences', JSON.stringify(appPreferences));
     applyRuntimePreferences();
+    // 保存搜索运行时配置到后端
+    try {
+        const searchMethodSelect = document.getElementById('search-method-select');
+        const searchEngineSelect = document.getElementById('search-engine-select');
+        const searchMaxResultsInput = document.getElementById('search-max-results');
+        const searchLocaleSelect = document.getElementById('search-locale');
+        const searchHeadlessInput = document.getElementById('search-headless');
+        const searchTimeoutInput = document.getElementById('search-timeout-ms');
+        const nextSearchRuntime = {
+            method: searchMethodSelect ? searchMethodSelect.value : searchRuntimeConfig.method,
+            engine: searchEngineSelect ? searchEngineSelect.value : searchRuntimeConfig.engine,
+            maxResults: searchMaxResultsInput ? parseInt(searchMaxResultsInput.value, 10) : searchRuntimeConfig.maxResults,
+            locale: searchLocaleSelect ? searchLocaleSelect.value : searchRuntimeConfig.locale,
+            headless: searchHeadlessInput ? !!searchHeadlessInput.checked : searchRuntimeConfig.headless,
+            timeoutMs: searchTimeoutInput ? parseInt(searchTimeoutInput.value, 10) : searchRuntimeConfig.timeoutMs
+        };
+        fetch('http://localhost:3000/api/settings/search', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(nextSearchRuntime)
+        }).then(resp => resp.json())
+          .then(data => {
+              if (data?.ok) {
+                  searchRuntimeConfig = { ...searchRuntimeConfig, ...nextSearchRuntime };
+              } else {
+                  console.warn('保存搜索设置失败:', data?.error);
+              }
+          }).catch(err => {
+              console.warn('保存搜索设置异常:', err);
+          });
+    } catch (err) {
+        console.warn('构造保存搜索设置失败:', err);
+    }
     closeSettings();
 }
 
@@ -822,6 +1087,21 @@ function resetSettings() {
     };
     localStorage.setItem('appPreferences', JSON.stringify(appPreferences));
     applyRuntimePreferences();
+    // 重置搜索运行时配置并同步到后端
+    searchRuntimeConfig = {
+        method: 'auto',
+        engine: 'bing',
+        maxResults: 8,
+        locale: 'zh-CN',
+        headless: true,
+        timeoutMs: 30000,
+        maxQuestions: 3
+    };
+    fetch('http://localhost:3000/api/settings/search', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(searchRuntimeConfig)
+    }).catch(err => console.warn('重置搜索设置到后端失败:', err));
     applySettingsToUI();
 }
 
@@ -1368,4 +1648,187 @@ function closeDeleteDialog() {
     }
     // 关闭删除对话框后清除上下文ID，避免后续误用
     currentContextConversationId = null;
+}
+
+// =======================
+// 智能意图识别与搜索/总结
+// =======================
+
+// 智能意图识别（中文）
+function detectSmartIntent(message) {
+    const msg = (message || '').trim();
+    const lower = msg.toLowerCase();
+    const urlMatch = msg.match(/https?:\/\/[^\s\u4e00-\u9fa5]+/i);
+    const openSites = [
+        { keys: ['高德开放平台', '高德地图开放平台', 'amap'], name: '高德开放平台', url: 'https://lbs.amap.com/' },
+        { keys: ['github', 'git hub', '访问github'], name: 'GitHub', url: 'https://github.com/' },
+        { keys: ['百度', 'baidu'], name: '百度', url: 'https://www.baidu.com/' },
+        { keys: ['必应', 'bing'], name: 'Bing', url: 'https://www.bing.com/' },
+        { keys: ['youtube', '优兔', '油管', 'ytb', 'yt'], name: 'YouTube', url: 'https://www.youtube.com/' },
+        { keys: ['bilibili', '哔哩哔哩', 'b站', 'B站', 'B 站', 'b 站', 'bili'], name: 'Bilibili', url: 'https://www.bilibili.com/' }
+    ];
+    // 打开网站（有头）
+    if (/^(打开|帮我打开|访问|进去)\s*/.test(msg)) {
+        for (const site of openSites) {
+            if (site.keys.some(k => msg.includes(k))) {
+                return { type: 'open', url: site.url, name: site.name };
+            }
+        }
+        const domainMatch = msg.match(/访问\s*([a-z0-9\-\.]+)\b/i);
+        if (domainMatch) {
+            const d = domainMatch[1].toLowerCase();
+            const url = d.startsWith('http') ? d : `https://${d}`;
+            return { type: 'open', url, name: d };
+        }
+    }
+    // 网址总结（必须 Playwright）
+    if (/总结|概述|梳理/.test(msg) && urlMatch) {
+        return { type: 'summarize_url', url: urlMatch[0], headed: /有头|弹窗|打开窗口/.test(msg) };
+    }
+    if (urlMatch && /介绍|总结|分析|说明|这是什么/.test(msg)) {
+        return { type: 'summarize_url', url: urlMatch[0], headed: /有头|弹窗|打开窗口/.test(msg) };
+    }
+    // 快速查询 → DuckDuckGo
+    if (/今天的新闻|快讯|速览|马上看看|快速查询/.test(msg)) {
+        return { type: 'search_fast', engine: 'duckduckgo' };
+    }
+    // 专业研究 → Playwright + Bing
+    if (/(最新进展|论文|研究|专业|技术动态|量子计算|量子|机器学习|深度学习)/.test(msg)) {
+        return { type: 'search_research', engine: 'bing' };
+    }
+    // 中文搜索 → Playwright + Baidu
+    if (/(中国|中文|传统文化|国内|政策|法规|百科)/.test(msg)) {
+        return { type: 'search_cn', engine: 'baidu' };
+    }
+    // 通用“搜索xxx” → 根据语言自动
+    if (/^搜(索)?/.test(lower) || /搜索/.test(msg)) {
+        const isChinese = /[\u4e00-\u9fa5]/.test(msg);
+        return isChinese ? { type: 'search_cn', engine: 'baidu' } : { type: 'search_research', engine: 'bing' };
+    }
+    return null;
+}
+
+// 后台搜索并总结（无头）
+async function performSmartSearchAndSummarize(query, intent) {
+    const rt = searchRuntimeConfig || {};
+    const defaultMode = intent.type === 'search_fast' ? 'auto' : 'playwright';
+    const mode = rt.method === 'duckduckgo' ? 'duckduckgo' : (rt.method === 'playwright' ? 'playwright' : defaultMode);
+    const engine = intent.engine || rt.engine || (intent.type === 'search_fast' ? 'duckduckgo' : 'bing');
+    const headless = typeof rt.headless === 'boolean' ? rt.headless : true;
+    const limit = String(rt.maxResults || 8);
+    const timeout = String(rt.timeoutMs || 30000);
+    const locale = rt.locale || 'zh-CN';
+    const needAggregate = /(多个来源|综合|整合|聚合)|python.*最新动态/i.test(query);
+    let results = [];
+    if (needAggregate) {
+        let ddgRes = { results: [] };
+        try {
+            ddgRes = await fetchJson(`/api/search?${new URLSearchParams({ query, mode: 'duckduckgo', limit, timeoutMs: timeout }).toString()}`);
+        } catch (e) {
+            console.warn('DuckDuckGo 聚合分支失败，改用 Playwright 聚合：', e);
+        }
+        const enginePw = engine === 'duckduckgo' ? (rt.engine || 'bing') : engine;
+        const pwRes = await fetchJson(`/api/search?${new URLSearchParams({ query, mode: 'playwright', engine: enginePw, headless: String(headless), limit, timeoutMs: timeout, locale }).toString()}`);
+        results = dedupeByUrl([...(ddgRes.results || []), ...(pwRes.results || [])]);
+    } else {
+        const params = new URLSearchParams({ query, mode, engine, headless: String(headless), limit, timeoutMs: timeout, locale });
+        let data;
+        try {
+            data = await fetchJson(`/api/search?${params.toString()}`);
+        } catch (e) {
+            // 当快速搜索（auto）失败时，回退到 Playwright+Bing
+            if (intent.type === 'search_fast') {
+                const engineFb = engine === 'duckduckgo' ? (rt.engine || 'bing') : engine;
+                const fallbackParams = new URLSearchParams({ query, mode: 'playwright', engine: engineFb, headless: String(headless), limit, timeoutMs: timeout, locale });
+                data = await fetchJson(`/api/search?${fallbackParams.toString()}`);
+            } else {
+                throw e;
+            }
+        }
+        results = data.results || [];
+    }
+    if (!results || results.length === 0) {
+        addMessage('未找到相关结果，请尝试调整关键词。', 'assistant');
+        return;
+    }
+    const summaryPrompt = buildSummaryPrompt(query, results);
+    await sendMessageViaSocket(summaryPrompt, null);
+}
+
+function dedupeByUrl(items) {
+    const seen = new Set();
+    const out = [];
+    for (const it of items) {
+        const u = (it && it.url) || '';
+        if (!u || seen.has(u)) continue;
+        seen.add(u);
+        out.push(it);
+    }
+    return out;
+}
+
+function buildSummaryPrompt(query, results) {
+    const top = results.slice(0, 8);
+    const lines = top.map((r, i) => `- [${i + 1}] ${r.title || '无标题'}\n  ${r.url || ''}\n  摘要：${r.snippet || ''}`);
+    return `请用中文根据以下搜索结果进行总结与回答，要求：\n- 先给出直接回答/结论；\n- 再给出由来与证据（引用条目编号）；\n- 如存在不确定性或多版本信息，请标注；\n- 最后附上参考链接列表。\n\n问题：${query}\n\n搜索结果：\n${lines.join('\n')}\n`;
+}
+
+async function fetchJson(url) {
+    const res = await fetch(url);
+    if (!res.ok) {
+        const text = await res.text();
+        throw new Error(text || `HTTP ${res.status}`);
+    }
+    return res.json();
+}
+
+// POST JSON 辅助函数
+async function postJson(url, data) {
+    const resp = await fetch(url, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(data || {})
+    });
+    if (!resp.ok) {
+        const text = await resp.text();
+        throw new Error(text || `HTTP ${resp.status}`);
+    }
+    return await resp.json();
+}
+
+// LLM 解析“打开<站点>并搜索<关键词>”并返回可直接打开的URL
+async function tryLLMParseSiteSearch(message) {
+    const msg = (message || '').trim();
+    if (!msg) return null;
+    // 仅在同时包含“打开/访问/进去/在…上/用”等动作词与“搜索/搜/查询/检索”时触发
+    const hasOpen = /(打开|帮我打开|访问|进去|在|用)/.test(msg);
+    const hasSearch = /(搜索|搜|查询|检索)/.test(msg);
+    if (!hasOpen || !hasSearch) return null;
+    try {
+        const res = await postJson('/api/intent/site-search', { text: msg });
+        if (res && res.ok && res.intent && res.intent.type === 'open' && res.intent.url) {
+            return { type: 'open', url: res.intent.url, name: res.intent.name };
+        }
+        return null;
+    } catch (e) {
+        console.warn('LLM 站点搜索意图解析接口错误：', e);
+        return null;
+    }
+}
+
+// 网址访问并总结（Playwright 必须）
+async function performUrlVisitAndSummarize(url, headed = true) {
+    const rt = searchRuntimeConfig || {};
+    const params = new URLSearchParams({ url, headless: String(!headed), timeoutMs: String(rt.timeoutMs || 30000), locale: rt.locale || 'zh-CN' });
+    const data = await fetchJson(`/api/search/fetch?${params.toString()}`);
+    const text = data.text || '';
+    const title = data.title || url;
+    if (headed) {
+        addMessage(`已在浏览器中打开 ${title}`, 'assistant');
+    }
+    if (!text || text.length < 200) {
+        addMessage('抓取的正文较少，可能页面是动态渲染或受限。已尽力总结。', 'assistant');
+    }
+    const prompt = `请用中文总结以下网页内容（最多500字），包含：核心结论、关键要点、相关背景、可能的争议。\n网页标题：${title}\n网页地址：${url}\n\n正文：\n${text.slice(0, 8000)}\n`;
+    await sendMessageViaSocket(prompt, null);
 }

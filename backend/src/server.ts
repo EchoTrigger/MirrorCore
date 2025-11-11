@@ -5,6 +5,11 @@ import cors from 'cors';
 import { createServer } from 'http';
 import { Server as SocketIOServer } from 'socket.io';
 import chatRoutes from './routes/chat';
+import agentRoutes from './routes/agent';
+import searchRoutes from './routes/search';
+import settingsRoutes from './routes/settings';
+import intentRoutes from './routes/intent';
+import sitesRoutes from './routes/sites';
 
 const app = express();
 const server = createServer(app);
@@ -23,7 +28,12 @@ app.use(express.json({ limit: '10mb' })); // 支持图片上传
 app.use(express.urlencoded({ extended: true }));
 
 // 路由
-app.use('/api/chat', chatRoutes);
+  app.use('/api/chat', chatRoutes);
+  app.use('/api/agent', agentRoutes);
+app.use('/api/search', searchRoutes);
+app.use('/api/settings', settingsRoutes);
+app.use('/api/intent', intentRoutes);
+app.use('/api/sites', sitesRoutes);
 
 // 提供前端页面预览（用于开发联调）
 app.use('/preview', express.static(path.resolve(__dirname, '../../desktop/renderer')));

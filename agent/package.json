@@ -1,0 +1,24 @@
+{
+  "name": "@mirrorcore/agent",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "MirrorCore Agent (MCP 代码模式)：以代码 API 呈现 MCP 服务器与工具",
+  "scripts": {
+    "dev": "tsx watch src/index.ts",
+    "build": "tsc -p tsconfig.json",
+    "example:transcript": "tsx examples/transcript_to_salesforce.ts",
+    "list:servers": "tsx src/index.ts",
+    "example:list-tools": "tsx examples/list_remote_tools.ts"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.21.1",
+    "axios": "^1.7.5",
+    "zod": "^3.23.8"
+  },
+  "devDependencies": {
+    "tsx": "^4.7.0",
+    "typescript": "^5.6.3",
+    "@types/node": "^20.12.12"
+  }
+}

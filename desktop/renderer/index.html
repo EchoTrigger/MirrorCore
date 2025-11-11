@@ -55,30 +55,36 @@
                             <p class="welcome-subtitle">我是你的智能助手，可以帮你处理各种任务</p>
                         </div>
                         
-                        <div class="suggestion-chips">
-                            <button class="suggestion-chip">
-                                <span class="material-symbols-outlined">mail</span>
-                                发送邮件
-                            </button>
-                            <button class="suggestion-chip">
-                                <span class="material-symbols-outlined">event</span>
-                                管理日程
-                            </button>
-                            <button class="suggestion-chip">
-                                <span class="material-symbols-outlined">search</span>
-                                搜索信息
-                            </button>
-                            <button class="suggestion-chip">
-                                <span class="material-symbols-outlined">help</span>
-                                使用帮助
-                            </button>
-                        </div>
                     </div>
                 </div>
 
                 <!-- 消息区域 -->
                 <div class="messages-container" id="messages-container" style="display: none;">
                     <!-- 消息将在这里动态添加 -->
+                </div>
+
+                <!-- 搜索面板 -->
+                <div class="search-section" id="search-section" style="display: none;">
+                    <div class="search-header">
+                        <h2><span class="material-symbols-outlined">search</span> 搜索信息</h2>
+                        <div class="search-actions">
+                            <button class="secondary-btn" id="close-search-panel">
+                                <span class="material-symbols-outlined">close</span>
+                                关闭
+                            </button>
+                        </div>
+                    </div>
+                    <div class="search-input-row">
+                        <input type="text" id="search-input" placeholder="请输入搜索关键词...">
+                        <button class="primary-btn" id="search-btn">
+                            <span class="material-symbols-outlined">travel_explore</span>
+                            搜索
+                        </button>
+                    </div>
+                    <div class="search-status" id="search-status" style="display:none;"></div>
+                    <div class="search-results" id="search-results">
+                        <!-- 搜索结果列表 -->
+                    </div>
                 </div>
             </div>
 
@@ -120,6 +126,7 @@
                 <div class="settings-tabs">
                     <button class="tab-btn active" data-tab="chat-settings">Chat</button>
                     <button class="tab-btn" data-tab="builder-settings">Builder</button>
+                    <button class="tab-btn" data-tab="search-settings">搜索设置</button>
                     <button class="tab-btn" data-tab="general-settings">通用</button>
                 </div>
 
@@ -246,6 +253,68 @@
                         </div>
                     </div>
 
+                    <!-- 搜索设置 -->
+                    <div class="tab-content" id="search-settings">
+                        <div class="settings-section">
+                            <h3><span class="material-symbols-outlined">travel_explore</span> 搜索行为</h3>
+                            <div class="setting-item">
+                                <label for="search-method-select">搜索模式</label>
+                                <select id="search-method-select">
+                                    <option value="auto" selected>自动（先DDG，失败或不足回退Playwright）</option>
+                                    <option value="duckduckgo">DuckDuckGo（快速）</option>
+                                    <option value="playwright">Playwright（高质量）</option>
+                                </select>
+                                <p class="setting-description">自动模式优先快速返回结果；Playwright模式适合复杂查询与高质量来源。</p>
+                            </div>
+                            <div class="setting-item">
+                                <label for="search-engine-select">首选引擎</label>
+                                <select id="search-engine-select">
+                                    <option value="bing" selected>Bing</option>
+                                    <option value="baidu">Baidu</option>
+                                    <option value="google">Google</option>
+                                </select>
+                                <p class="setting-description">用于 Playwright 或自动模式的引擎选择；DDG模式下该项不生效。</p>
+                            </div>
+                            <div class="setting-item">
+                                <label for="search-max-results">结果条数</label>
+                                <input type="number" id="search-max-results" min="1" max="50" value="8">
+                                <p class="setting-description">每次搜索返回的最大结果数。</p>
+                            </div>
+                        </div>
+
+                        <div class="settings-section">
+                            <h3><span class="material-symbols-outlined">language</span> 环境与性能</h3>
+                            <div class="setting-item">
+                                <label for="search-locale">语言区域（locale）</label>
+                                <select id="search-locale">
+                                    <option value="zh-CN" selected>zh-CN（中文）</option>
+                                    <option value="en-US">en-US（英文）</option>
+                                    <option value="ja-JP">ja-JP（日语）</option>
+                                </select>
+                                <p class="setting-description">影响 Playwright 浏览器上下文的语言偏好。</p>
+                            </div>
+                            <div class="setting-item">
+                                <label class="toggle-label">
+                                    <input type="checkbox" id="search-headless" checked>
+                                    <span class="toggle-slider"></span>
+                                    使用无头模式（Headless）
+                                </label>
+                                <p class="setting-description">无头模式速度更快；如需交互或弹窗，请关闭此选项。</p>
+                            </div>
+                            <div class="setting-item">
+                                <label for="search-timeout-ms">超时（毫秒）</label>
+                                <input type="number" id="search-timeout-ms" min="5000" max="120000" step="1000" value="30000">
+                                <p class="setting-description">网络不佳或站点较慢时可适当调大。</p>
+                            </div>
+                        </div>
+
+                        <div class="settings-section">
+                            <h3><span class="material-symbols-outlined">help_center</span> 说明</h3>
+                            <p class="setting-description">DDG在部分网络环境下可能连接失败；自动模式会回退到Bing/百度以保证结果可用。</p>
+                        </div>
+
+                    </div>
+
                     <!-- 通用设置 -->
                     <div class="tab-content" id="general-settings">
                         <div class="settings-section">
@@ -309,16 +378,17 @@
                             </div>
                         </div>
 
-                        <div class="settings-actions">
-                            <button class="primary-btn" id="save-settings-btn">
-                                <span class="material-symbols-outlined">save</span>
-                                保存设置
-                            </button>
-                            <button class="secondary-btn" id="reset-settings-btn">
-                                <span class="material-symbols-outlined">undo</span>
-                                重置为默认
-                            </button>
-                        </div>
+                    </div>
+                    <!-- 统一的操作区：保存 / 重置 -->
+                    <div class="settings-actions">
+                        <button class="primary-btn" id="save-settings-btn">
+                            <span class="material-symbols-outlined">save</span>
+                            保存设置
+                        </button>
+                        <button class="secondary-btn" id="reset-settings-btn">
+                            <span class="material-symbols-outlined">undo</span>
+                            重置为默认
+                        </button>
                     </div>
                 </div>
             </div>

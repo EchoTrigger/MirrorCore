@@ -1,0 +1,10 @@
+{
+  "search": {
+    "method": "auto",
+    "engine": "google",
+    "maxResults": 12,
+    "locale": "zh-CN",
+    "headless": false,
+    "timeoutMs": 10000
+  }
+}

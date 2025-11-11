@@ -879,6 +879,178 @@
 
 ### 错误代码
 
+---
+
+## 🔎 搜索接口与配置（后端实现）
+
+本节描述 MirrorCore 后端已实现的统一搜索接口与搜索设置热更新能力，以及相关环境变量的作用与优先级策略。
+
+### 配置优先级与持久化
+
+- 配置优先级：运行时配置 > 环境变量(.env) > 代码内置默认值。
+- 运行时配置存储：`backend/data/config.json`，通过 API 可热更新，无需重启服务。
+- 环境变量仅作为初始默认值（模板在 `backend/.env.example` 文件末尾），部署时可在 `backend/.env` 中设置。
+
+支持的关键字段：
+- 搜索方法(method)：`Auto` | `DuckDuckGo` | `Playwright`
+- 搜索引擎(engine)：`DuckDuckGo` | `Bing` | `Baidu`
+- 最大提问数(maxQuestions)：整数，可用于限制“连环提问”型搜索
+- 最大结果数(maxResults)：整数，默认 10（未显式提供时）
+- 区域/语言(locale)：例如 `zh-CN`
+- 是否无头(headless)：`true`/`false`（Playwright 模式下生效）
+- 超时(timeoutMs)：整数毫秒
+
+说明与约束：
+- Auto 模式：先尝试 DuckDuckGo，必要时自动回退到 Playwright。
+- Playwright 模式：支持多引擎（Bing/Baidu），适合复杂环境或需要稳定性的场景。
+- DuckDuckGo 模式：轻量快速；在网络受限时可能受影响。
+- 某些引擎（如 Bing、Baidu）返回的 URL 可能为重定向链接，后续建议使用服务端直链解码提升可用性。
+
+### 环境变量（.env）说明
+
+以下键位在 `backend/.env.example` 文件末尾提供注释与示例，作为初始默认值：
+- `SEARCH_METHOD`：`Auto` | `DuckDuckGo` | `Playwright`
+- `SEARCH_ENGINE`：`DuckDuckGo` | `Bing` | `Baidu`
+- `MAX_SEARCH_QUESTIONS`：整数（例如 3）
+- `MAX_SEARCH_RESULTS`：整数（例如 10、20）
+- `SEARCH_LOCALE`：例如 `zh-CN`
+- `SEARCH_HEADLESS`：`true` 或 `false`
+- `SEARCH_TIMEOUT_MS`：整数毫秒（例如 10000）
+
+注意：若未在 `backend/.env` 中设置，上述键在 `/api/settings/search` 的 `env` 返回值会显示为 `null`。
+
+### 搜索接口
+
+#### GET /api/search
+
+说明：执行一次搜索。除 `query` 必填外，其它参数可省略，服务层将根据“运行时配置 > 环境变量 > 代码默认值”选择默认值。
+
+查询参数：
+- `query` 或 `q`：必填，搜索关键词
+- `mode`：可选，`auto` | `duckduckgo` | `playwright`（大小写不敏感）
+- `engine`：可选，`duckduckgo` | `bing` | `baidu`
+- `limit`：可选，整数，最大返回条数
+- `headless`：可选，`true`/`false`
+- `locale`：可选，例如 `zh-CN`
+
+响应示例：
+```json
+{
+  "query": "Playwright 教程",
+  "modeRequested": null,
+  "modeUsed": "playwright",
+  "engineRequested": null,
+  "engineUsed": "baidu",
+  "count": 5,
+  "results": [
+    {
+      "title": "Playwright 中文网",
+      "url": "http://www.baidu.com/link?url=...",
+      "snippet": "",
+      "source": "baidu"
+    }
+  ]
+}
+```
+
+说明：
+- `modeRequested`/`engineRequested` 是请求端显式传参；若未提供则为 `null`。
+- `modeUsed`/`engineUsed` 是服务层实际选择的值；当未显式传参时，来源于运行时配置或环境变量默认值。
+
+### 搜索设置 API（热更新）
+
+#### GET /api/settings/search
+
+说明：获取当前搜索设置，包括运行时配置与环境变量状态。
+
+响应示例：
+```json
+{
+  "ok": true,
+  "runtime": {
+    "method": "Playwright",
+    "engine": "Baidu",
+    "maxResults": 12,
+    "locale": "zh-CN",
+    "headless": true,
+    "timeoutMs": 10000
+  },
+  "env": {
+    "SEARCH_METHOD": null,
+    "SEARCH_ENGINE": null,
+    "MAX_SEARCH_QUESTIONS": null,
+    "MAX_SEARCH_RESULTS": null,
+    "SEARCH_LOCALE": null,
+    "SEARCH_HEADLESS": null,
+    "SEARCH_TIMEOUT_MS": null
+  }
+}
+```
+
+#### PUT /api/settings/search
+
+说明：热更新运行时搜索设置，立即生效，无需重启。
+
+请求体：
+```json
+{
+  "method": "Playwright",
+  "engine": "Baidu",
+  "maxResults": 12,
+  "locale": "zh-CN",
+  "headless": true,
+  "timeoutMs": 10000
+}
+```
+
+响应示例：
+```json
+{
+  "ok": true,
+  "runtime": {
+    "method": "Playwright",
+    "engine": "Baidu",
+    "maxResults": 12,
+    "locale": "zh-CN",
+    "headless": true,
+    "timeoutMs": 10000
+  }
+}
+```
+
+字段说明与校验建议：
+- `method`：`Auto` | `DuckDuckGo` | `Playwright`
+- `engine`：`DuckDuckGo` | `Bing` | `Baidu`
+- `maxResults`：整数 > 0
+- `timeoutMs`：整数 >= 0
+- `headless`：布尔值
+- `locale`：字符串，例如 `zh-CN`
+
+### 使用示例（Windows PowerShell）
+
+- 更新运行时配置：
+```
+$body = @{ method = "Playwright"; engine = "Baidu"; maxResults = 12; headless = $true; timeoutMs = 10000; locale = "zh-CN" } | ConvertTo-Json
+Invoke-RestMethod -Uri "http://localhost:3000/api/settings/search" -Method Put -Body $body -ContentType "application/json" | ConvertTo-Json -Depth 4
+```
+
+- 查看当前设置（运行时+环境）：
+```
+Invoke-RestMethod -Uri "http://localhost:3000/api/settings/search" -Method Get | ConvertTo-Json -Depth 4
+```
+
+- 使用默认设置进行搜索（不显式传参 mode/engine/limit）：
+```
+Invoke-RestMethod -Uri "http://localhost:3000/api/search?query=Playwright%20%E6%95%99%E7%A8%8B" -Method Get | ConvertTo-Json -Depth 3
+```
+
+### 进一步优化建议
+
+- 服务端统一解码 Bing/Baidu 的重定向链接，返回直链，提升可用性。
+- 对 `PUT /api/settings/search` 做字段校验与白名单限制，增强稳定性。
+- 前端设置页面可直接调用上述接口实现热更新，与提示词/头像管理保持一致交互体验。
+
+
 | 代码 | 描述 | HTTP状态码 |
 |------|------|-----------|
 | `INVALID_REQUEST` | 请求参数无效 | 400 |
